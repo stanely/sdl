@@ -7,7 +7,7 @@ SDL_INCLUDE = -I/home/stanely/sdl/SDL2-2.0.1/build_out/include
 # You may need to change -std=c++11 to -std=c++0x if your compiler is a bit older
 CXXFLAGS = -Wall -c -std=c++11 $(SDL_INCLUDE)
 LDFLAGS = $(SDL_LIB)
-EXE = SDL_Lesson0
+EXE = SDL_Test1
 
 all: $(EXE)
 
