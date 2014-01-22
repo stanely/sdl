@@ -49,8 +49,60 @@ SDL_Texture* renderText(char* message, SDL_Color color, TTF_Font *font, SDL_Rend
 	return tex;
 }
 
+// timer callback
+Uint32 draw_progress_func(Uint32 interval, void *param) {
+	SDL_Event event;
+	SDL_UserEvent userevent;
+
+	userevent.type = SDL_USEREVENT;
+	userevent.code = 0;
+	userevent.data1 = NULL;
+	userevent.data2 = NULL;
+
+	event.type = SDL_USEREVENT;
+	event.user = userevent;
+
+	SDL_PushEvent(&event);
+	return interval;
+}
+
+void displayUsage(SDL_Renderer *ren) {
+
+	int fontSize = 40;
+	TTF_Font *font = TTF_OpenFont(ttf_filename, fontSize);
+	if(font == nullptr) {
+		printf("[%s, %d]  TTF_OpenFont failed!\n", __func__, __LINE__);
+		TTF_CloseFont(font);
+		return;
+	}
+
+	SDL_Color color = {0x28, 0xFF, 0x28, 0x80};
+	SDL_Texture *imageText = renderText("[Usage]", color, font, ren); 
+	renderTextureOld(imageText, ren, 50, 520);  // draw text image.
+	SDL_DestroyTexture(imageText);
+
+	imageText = renderText("a : show text", color, font, ren); 
+	renderTextureOld(imageText, ren, 50, 560);  // draw text image.
+	SDL_DestroyTexture(imageText);
+
+	imageText = renderText("b : show preogrss", color, font, ren); 
+	renderTextureOld(imageText, ren, 50, 600);  // draw text image.
+	SDL_DestroyTexture(imageText);
+
+	imageText = renderText("q : exit", color, font, ren); 
+	renderTextureOld(imageText, ren, 50, 640);  // draw text image.
+	SDL_DestroyTexture(imageText);
+
+	SDL_RenderPresent(ren);  // present the updated screen to show the result.
+}
+
 int main(int argc, char **argv){
+	static int SCREEN_WIDTH = 1280;
+	static int SCREEN_HEIGHT = 720;
 	int user_quit = 0;
+	SDL_TimerID timer;  // used to draw the progress bar.
+	int icon_start_x = 0;
+	int icon_gap = 30;
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0){
 		printf("[%s, %d] SDL_Init failed!\n", __func__, __LINE__);
@@ -69,7 +121,7 @@ int main(int argc, char **argv){
 		return 1;
 	}
 
-	SDL_Window *win = SDL_CreateWindow("Test2", 100, 100, 1280, 720, SDL_WINDOW_SHOWN);
+	SDL_Window *win = SDL_CreateWindow("Test2", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 
 	if(win == nullptr) {
 		printf("[%s, %d]  SDL_CreateWindow failed!\n", __func__, __LINE__);
@@ -92,19 +144,21 @@ int main(int argc, char **argv){
 	}
 
 	SDL_RenderClear(ren);
-
+	
 	//renderTextureOld(background, ren, 0, 0);  // draw background image.
-	renderTexture(background, ren, 0, 0, 1280, 720);  // draw background image.
+	renderTexture(background, ren, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);  // draw background image.
 
 	int tmpW, tmpH;
 	SDL_QueryTexture(image, NULL, NULL, &tmpW, &tmpH);
 	int rW = tmpW / 5;  // original image is too big, let's scale down 5x.
 	int rH = tmpH / 5;
 	renderTexture(image, ren, 10, 10, rW, rH);
+	icon_start_x += 10;
 
 	SDL_RenderPresent(ren);  // present the updated screen to show the result.
 
 	//SDL_Delay(5000);
+
 	// main loop
 	SDL_Event evt;
 	int fontSize = 80;
@@ -115,6 +169,8 @@ int main(int argc, char **argv){
 		return 1;
 	}
 
+	displayUsage(ren);
+
 	while(!user_quit) {
 		while(SDL_PollEvent(&evt)) {
 			if(evt.type == SDL_KEYDOWN) {
@@ -124,7 +180,8 @@ int main(int argc, char **argv){
 						user_quit = 1;
 					break;
 					case SDLK_a:  // draw text
-						SDL_Color color = {128, 128, 128};
+					{
+						SDL_Color color = {0x4D, 0xFF, 0xFF, 0xFF};
 						SDL_Texture *imageText = renderText("Test Installation!!!", color, font, ren); 
 						if(imageText == nullptr) {
 							printf("[%s, %d] Got 'a' key press, renderText failed !\n", __func__, __LINE__);
@@ -133,13 +190,43 @@ int main(int argc, char **argv){
 						//SDL_RenderClear(ren);
 						renderTextureOld(imageText, ren, 50, 300);  // draw text image.
 						SDL_RenderPresent(ren);  // present the updated screen to show the result.
+					}
+					break;
+					case SDLK_b:
+					{
+						int interval = 5;  // 5ms
+						timer = SDL_AddTimer(interval, draw_progress_func, NULL);
+						printf("[%s, %d] timer = %d!\n", __func__, __LINE__, timer);
+					}
 					break;
 				}
+			} else if(evt.type == SDL_USEREVENT) {  // trigger by timer
+				printf("[%s, %d] Got SDL_USEREVENT !\n", __func__, __LINE__);
+				int tmpW, tmpH;
+				SDL_QueryTexture(image, NULL, NULL, &tmpW, &tmpH);
+				int rW = tmpW / 5;  // original image is too big, let's scale down 5x.
+				int rH = tmpH / 5;
+
+				icon_start_x += icon_gap;
+				if(icon_start_x > SCREEN_WIDTH) {
+					SDL_RemoveTimer(timer);
+					
+					SDL_Color color = {0xFF, 0x00, 0x00, 0xFF};
+					SDL_Texture *imageText = renderText("Installation is done!!!", color, font, ren); 
+					renderTextureOld(imageText, ren, 50, 200);  // draw text image.
+					SDL_RenderPresent(ren);  // present the updated screen to show the result.
+					break;
+				}
+				renderTexture(image, ren, icon_start_x, 10, rW, rH);
+				SDL_RenderPresent(ren);  // present the updated screen to show the result.
 			}
 		}
 
 	}
 
+	SDL_Delay(5000);
+
+	SDL_RemoveTimer(timer);
 	TTF_CloseFont(font);
 	SDL_DestroyTexture(background);
 	SDL_DestroyTexture(image);
