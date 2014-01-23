@@ -91,6 +91,7 @@ void displayUsage(SDL_Renderer *ren) {
 
 	imageText = renderText("q : exit", color, font, ren); 
 	renderTextureOld(imageText, ren, 50, 640);  // draw text image.
+	TTF_CloseFont(font);
 	SDL_DestroyTexture(imageText);
 
 	SDL_RenderPresent(ren);  // present the updated screen to show the result.
